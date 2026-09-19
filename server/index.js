@@ -41,6 +41,11 @@ app.delete('/api/projects/:id', (req, res) => {
   }
 });
 
+// 台账总览：按项目与按状态的条数、占比，以及几类需要盯住的清单；清单条数上限由 limit 指定
+app.get('/api/overview', (req, res) => {
+  res.json(api.buildOverview({ limit: api.readQuery(req.query, 'limit') }));
+});
+
 // 依赖清单：按项目、状态、许可筛选，再按依赖名或责任人搜索
 app.get('/api/deps', (req, res) => {
   const result = api.listDeps({

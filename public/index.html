@@ -23,6 +23,42 @@
   <div class="notice hidden" id="notice"></div>
 
   <main>
+    <section class="panel" id="overview-panel">
+      <div class="panel-head">
+        <h2>台账总览</h2>
+        <div class="filters">
+          <label class="inline-control" data-field="overviewLimit">每类清单最多显示
+            <input id="overview-limit" type="number" min="1" max="100" step="1" value="5">
+            条
+          </label>
+          <button type="button" id="overview-refresh" class="ghost">刷新总览</button>
+        </div>
+      </div>
+      <p class="panel-tip" id="overview-summary"></p>
+
+      <div class="stat-blocks">
+        <div class="stat-block">
+          <h3>按项目</h3>
+          <table class="stat-grid">
+            <thead><tr><th>项目</th><th>条数</th><th>占全部登记</th></tr></thead>
+            <tbody id="overview-project-body"></tbody>
+          </table>
+        </div>
+        <div class="stat-block">
+          <h3>按状态</h3>
+          <table class="stat-grid">
+            <thead><tr><th>状态</th><th>条数</th><th>占全部登记</th></tr></thead>
+            <tbody id="overview-status-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h3 class="watch-title">需要盯住的登记</h3>
+      <p class="panel-tip" id="overview-threshold-tip"></p>
+      <div class="watch-lists" id="watch-lists"></div>
+      <p class="empty-tip hidden" id="overview-empty">还没有任何依赖登记，先在下方登记几条</p>
+    </section>
+
     <section class="panel">
       <div class="panel-head">
         <h2>项目</h2>

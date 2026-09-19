@@ -5,8 +5,18 @@ const state = {
   deps: [],
   licenses: [],
   statuses: [],
+  overview: null,
   editingId: '',
 };
+
+// 五类需要盯住的清单：名称与说明固定在这里，接口只负责给条数与条目
+const WATCH_META = [
+  { key: 'missingLicense', name: '还没写许可', desc: '许可留空，合规上还没法确认' },
+  { key: 'missingOwner', name: '还没写责任人', desc: '责任人留空，出了问题找不到人' },
+  { key: 'stalePending', name: '待升拖太久', desc: '', daysField: 'pendingDays', dayText: (days) => `停在待升已经 ${days} 天` },
+  { key: 'singleProject', name: '只有一个项目在用', desc: '同名依赖没有在其它项目登记过，升级或替换时没人互相照应' },
+  { key: 'staleUpdated', name: '很久没改动', desc: '', daysField: 'staleDays', dayText: (days) => `已经 ${days} 天没有改动` },
+];
 
 const el = (id) => document.getElementById(id);
 
@@ -180,6 +190,67 @@ function projectName(projectId) {
   return found ? found.name : projectId;
 }
 
+// 总览单独拉一份：它有自己的条数上限，与下方登记区的筛选互不影响
+async function loadOverview() {
+  const limit = el('overview-limit').value.trim();
+  const query = limit ? `?limit=${encodeURIComponent(limit)}` : '';
+  state.overview = await request(`/api/overview${query}`);
+  renderOverview();
+}
+
+function renderOverview() {
+  const overview = state.overview;
+  if (!overview) return;
+
+  el('overview-summary').textContent = `当前共 ${overview.total} 条登记，下表各分组的占比都以这 ${overview.total} 条为分母，四舍五入取整。`;
+
+  el('overview-project-body').innerHTML = overview.byProject.map((item) => `<tr>
+      <td>${escapeHtml(item.name)}</td>
+      <td>${item.count} 条</td>
+      <td>${item.percent}%</td>
+    </tr>`).join('');
+
+  el('overview-status-body').innerHTML = overview.byStatus.map((item) => `<tr>
+      <td>${escapeHtml(item.status)}</td>
+      <td>${item.count} 条</td>
+      <td>${item.percent}%</td>
+    </tr>`).join('');
+
+  const tip = el('overview-threshold-tip');
+  tip.textContent = `“待升拖太久”指停在待升状态超过 ${overview.thresholds.pendingDays} 天；“很久没改动”指最近一次改动在 ${overview.thresholds.updatedDays} 天以前。每类清单最多显示 ${overview.lists.missingLicense.limit} 条，取不满时按实际条数显示。`;
+
+  el('overview-empty').classList.toggle('hidden', overview.total > 0);
+
+  el('watch-lists').innerHTML = WATCH_META.map((meta) => {
+    const group = overview.lists[meta.key];
+    const desc = meta.desc || '';
+    const head = `<div class="watch-head">
+        <span class="watch-name">${escapeHtml(meta.name)}</span>
+        <span class="watch-count">共 ${group.count} 条${group.count > group.items.length ? `，显示 ${group.items.length} 条` : ''}</span>
+      </div>
+      ${desc ? `<p class="watch-desc">${escapeHtml(desc)}</p>` : ''}`;
+    const body = group.items.length
+      ? `<ul class="watch-items">${group.items.map((item) => renderWatchItem(item, meta)).join('')}</ul>`
+      : '<p class="watch-none">没有命中的登记</p>';
+    return `<div class="watch-card${group.count > 0 ? ' has-hit' : ''}">${head}${body}</div>`;
+  }).join('');
+}
+
+function renderWatchItem(item, meta) {
+  const extra = meta.daysField && item[meta.daysField] !== undefined
+    ? `<span class="watch-days">${escapeHtml(meta.dayText(item[meta.daysField]))}</span>`
+    : '';
+  return `<li>
+      <span class="watch-item-main">
+        <span class="watch-project">${escapeHtml(item.projectName)}</span>
+        <span class="mono">${escapeHtml(item.name)}@${escapeHtml(item.version)}</span>
+        ${extra}
+      </span>
+      <span class="watch-item-meta mono">${escapeHtml(formatTime(item.updatedAt))}</span>
+      <button type="button" class="link" data-overview-edit="${escapeHtml(item.id)}">编辑</button>
+    </li>`;
+}
+
 function renderDeps() {
   const body = el('dep-body');
   body.innerHTML = state.deps.map((item) => {
@@ -241,6 +312,7 @@ async function submitProject(event) {
     notify('项目已新增', 'ok');
     await loadProjects();
     await loadDeps();
+    await loadOverview();
   } catch (err) {
     notify(err.message, 'error');
     markField(err.field);
@@ -272,6 +344,7 @@ async function submitDep(event) {
     closeDepForm();
     await loadProjects();
     await loadDeps();
+    await loadOverview();
   } catch (err) {
     notify(err.message, 'error');
     markField(err.field);
@@ -306,6 +379,19 @@ document.addEventListener('click', async (event) => {
       }
       await loadProjects();
       await loadDeps();
+      await loadOverview();
+    } catch (err) {
+      notify(err.message, 'error');
+    }
+    return;
+  }
+
+  if (node.dataset.overviewEdit) {
+    clearNotice();
+    try {
+      const found = await request(`/api/deps/${encodeURIComponent(node.dataset.overviewEdit)}`);
+      openDepForm(found);
+      el('dep-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
     } catch (err) {
       notify(err.message, 'error');
     }
@@ -329,6 +415,7 @@ document.addEventListener('click', async (event) => {
       notify('登记已删除', 'ok');
       await loadProjects();
       await loadDeps();
+      await loadOverview();
     } catch (err) {
       notify(err.message, 'error');
     }
@@ -361,7 +448,15 @@ el('dep-refresh').addEventListener('click', () => {
   clearNotice();
   loadProjects()
     .then(loadDeps)
+    .then(loadOverview)
     .catch((err) => notify(err.message, 'error'));
+});
+el('overview-refresh').addEventListener('click', () => {
+  clearNotice();
+  loadOverview().catch((err) => notify(err.message, 'error'));
+});
+el('overview-limit').addEventListener('change', () => {
+  loadOverview().catch((err) => notify(err.message, 'error'));
 });
 el('filter-project').addEventListener('change', () => {
   loadDeps().catch((err) => notify(err.message, 'error'));
@@ -381,4 +476,5 @@ restoreOperator();
 loadHealth();
 loadProjects()
   .then(loadDeps)
+  .then(loadOverview)
   .catch((err) => notify(err.message, 'error'));

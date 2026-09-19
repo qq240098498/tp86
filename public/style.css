@@ -341,3 +341,167 @@ label.full input {
   display: flex;
   gap: 10px;
 }
+
+/* 台账总览 */
+.inline-control {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.inline-control input {
+  width: 70px;
+}
+
+.stat-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 12px 0 4px;
+}
+
+.stat-block {
+  flex: 1;
+  min-width: 280px;
+}
+
+.stat-block h3,
+.watch-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+table.stat-grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.stat-grid th,
+table.stat-grid td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-size: 13px;
+}
+
+table.stat-grid th {
+  background: #f9fafc;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+table.stat-grid td:last-child,
+table.stat-grid th:last-child {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-title {
+  margin-top: 18px;
+}
+
+.watch-lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.watch-card {
+  flex: 1;
+  min-width: 300px;
+  max-width: 480px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.watch-card.has-hit {
+  border-color: var(--warn-line);
+  background: var(--warn-bg);
+}
+
+.watch-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.watch-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.watch-count {
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.watch-desc {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.watch-items {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.watch-items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 12.5px;
+}
+
+.watch-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.watch-project {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.watch-days {
+  color: #8a5a00;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.watch-item-meta {
+  color: var(--ink-soft);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.watch-none {
+  margin: 8px 0 0;
+  color: var(--ok);
+  font-size: 12px;
+}
