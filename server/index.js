@@ -52,6 +52,19 @@ app.get('/api/deps', (req, res) => {
   res.json(result);
 });
 
+// 台账总览：按项目与按状态的条数与占比，以及几类需要盯住的清单
+app.get('/api/summary', (req, res) => {
+  try {
+    res.json(api.getSummary({
+      limit: api.readQuery(req.query, 'limit'),
+      pendingDays: api.readQuery(req.query, 'pendingDays'),
+      staleDays: api.readQuery(req.query, 'staleDays'),
+    }));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 app.post('/api/deps', (req, res) => {
   try {
     res.status(201).json(api.createDep(req.body));

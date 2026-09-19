@@ -341,3 +341,86 @@ label.full input {
   display: flex;
   gap: 10px;
 }
+
+/* 台账总览：按项目与按状态两张表并排，占比条用同一把尺子 */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.stat-block h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+table.grid.stat-table,
+table.grid.watch-table {
+  min-width: 0;
+}
+
+.percent-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.percent-bar {
+  flex: 1;
+  min-width: 80px;
+  height: 8px;
+  border-radius: 4px;
+  background: #eef0f3;
+  overflow: hidden;
+}
+
+.percent-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.watch-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 16px;
+}
+
+.watch-block {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.watch-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.watch-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.watch-meta {
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+label.mini {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+label.mini input {
+  width: 72px;
+}

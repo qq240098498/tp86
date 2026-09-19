@@ -1,12 +1,22 @@
-// 页面交互：项目清单与依赖登记都从服务端拉取，任何一步失败都把说明显示在顶部并标到对应输入项上
+// 页面交互：项目清单、依赖登记与台账总览都从服务端拉取，任何一步失败都把说明显示在顶部并标到对应输入项上
 
 const state = {
   projects: [],
   deps: [],
   licenses: [],
   statuses: [],
+  summary: null,
   editingId: '',
 };
+
+// 五类需要盯住的清单：标题里的天数门槛用服务端实际生效的值回填
+const WATCH_SECTIONS = [
+  { key: 'missingLicense', title: () => '还没写许可', daysLabel: '搁置天数' },
+  { key: 'missingOwner', title: () => '还没写责任人', daysLabel: '搁置天数' },
+  { key: 'pendingStale', title: (params) => `停在待升超过 ${params.pendingDays} 天`, daysLabel: '停滞天数' },
+  { key: 'singleProject', title: () => '只在一个项目里出现过', daysLabel: '搁置天数' },
+  { key: 'staleUpdated', title: (params) => `超过 ${params.staleDays} 天没改动`, daysLabel: '未动天数' },
+];
 
 const el = (id) => document.getElementById(id);
 
@@ -122,6 +132,27 @@ async function loadDeps() {
   renderDeps();
 }
 
+// 台账总览：三个参数留空时交给服务端用默认值，填了就必须是能通过校验的整数
+async function loadSummary() {
+  const params = new URLSearchParams();
+  const limit = el('summary-limit').value.trim();
+  const pendingDays = el('summary-pending-days').value.trim();
+  const staleDays = el('summary-stale-days').value.trim();
+  if (limit) params.set('limit', limit);
+  if (pendingDays) params.set('pendingDays', pendingDays);
+  if (staleDays) params.set('staleDays', staleDays);
+  const query = params.toString();
+  state.summary = await request(`/api/summary${query ? `?${query}` : ''}`);
+  renderSummary();
+}
+
+// 项目、依赖与总览一起刷新，任何登记变动之后都走这里
+async function refreshAll() {
+  await loadProjects();
+  await loadDeps();
+  await loadSummary();
+}
+
 function renderProjects() {
   const body = el('project-body');
   body.innerHTML = state.projects.map((item) => `<tr>
@@ -202,6 +233,69 @@ function renderDeps() {
   el('dep-empty').classList.toggle('hidden', state.deps.length > 0);
 }
 
+function renderSummary() {
+  const summary = state.summary;
+  if (!summary) return;
+  el('summary-meta').textContent = `共 ${summary.total} 条登记，统计时间 ${formatTime(summary.generatedAt)}；占比的分母统一按当前登记的总条数计算，保留一位小数`;
+  renderStatTable(el('summary-by-project'), summary.byProject.map((row) => ({
+    label: row.projectName, count: row.count, percent: row.percent,
+  })));
+  renderStatTable(el('summary-by-status'), summary.byStatus.map((row) => ({
+    label: row.status, count: row.count, percent: row.percent,
+  })));
+  renderWatch(summary);
+}
+
+// 占比条与数字出自同一份数据，按项目与按状态两张表之间能横着比
+function renderStatTable(body, rows) {
+  body.innerHTML = rows.map((row) => `<tr>
+      <td>${escapeHtml(row.label)}</td>
+      <td>${row.count} 条</td>
+      <td>
+        <div class="percent-cell">
+          <span class="percent-bar"><span style="width: ${Math.min(100, row.percent)}%"></span></span>
+          <span class="mono">${row.percent.toFixed(1)}%</span>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// 每类清单一块：标题带门槛与总条数，截断时写清显示前几条，取不满就按实际条数渲染
+function renderWatch(summary) {
+  el('watch-grid').innerHTML = WATCH_SECTIONS.map((section) => {
+    const list = summary.watch[section.key];
+    const title = section.title(summary.params);
+    const shown = list.items.length;
+    const meta = list.total > shown ? `共 ${list.total} 条，显示前 ${shown} 条` : `共 ${list.total} 条`;
+    const table = shown ? `<div class="table-wrap">
+        <table class="grid watch-table">
+          <thead>
+            <tr>
+              <th>依赖名称</th>
+              <th>所属项目</th>
+              <th>版本</th>
+              <th>状态</th>
+              <th>${escapeHtml(section.daysLabel)}</th>
+              <th>最近改动</th>
+            </tr>
+          </thead>
+          <tbody>${list.items.map((item) => `<tr>
+              <td class="mono">${escapeHtml(item.name)}</td>
+              <td>${escapeHtml(item.projectName)}</td>
+              <td class="mono">${escapeHtml(item.version)}</td>
+              <td>${escapeHtml(item.status)}</td>
+              <td>${item.days} 天</td>
+              <td class="mono">${escapeHtml(formatTime(item.updatedAt))}</td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>` : '<p class="empty-tip">这一类目前没有需要盯的登记</p>';
+    return `<div class="watch-block">
+      <div class="watch-head"><h3>${escapeHtml(title)}</h3><span class="watch-meta">${meta}</span></div>
+      ${table}
+    </div>`;
+  }).join('');
+}
+
 function openDepForm(dep) {
   state.editingId = dep ? dep.id : '';
   el('dep-form-title').textContent = dep ? `编辑登记：${dep.name}` : '新建登记';
@@ -239,8 +333,7 @@ async function submitProject(event) {
     el('project-owner').value = '';
     el('project-note').value = '';
     notify('项目已新增', 'ok');
-    await loadProjects();
-    await loadDeps();
+    await refreshAll();
   } catch (err) {
     notify(err.message, 'error');
     markField(err.field);
@@ -270,8 +363,7 @@ async function submitDep(event) {
       notify('依赖登记已新增', 'ok');
     }
     closeDepForm();
-    await loadProjects();
-    await loadDeps();
+    await refreshAll();
   } catch (err) {
     notify(err.message, 'error');
     markField(err.field);
@@ -304,8 +396,7 @@ document.addEventListener('click', async (event) => {
         await request(`/api/projects/${encodeURIComponent(projectId)}`, { method: 'DELETE' });
         notify('项目已删除', 'ok');
       }
-      await loadProjects();
-      await loadDeps();
+      await refreshAll();
     } catch (err) {
       notify(err.message, 'error');
     }
@@ -327,8 +418,7 @@ document.addEventListener('click', async (event) => {
       await request(`/api/deps/${encodeURIComponent(node.dataset.depDelete)}`, { method: 'DELETE' });
       if (state.editingId === node.dataset.depDelete) closeDepForm();
       notify('登记已删除', 'ok');
-      await loadProjects();
-      await loadDeps();
+      await refreshAll();
     } catch (err) {
       notify(err.message, 'error');
     }
@@ -359,9 +449,15 @@ el('filter-reset').addEventListener('click', () => {
 });
 el('dep-refresh').addEventListener('click', () => {
   clearNotice();
-  loadProjects()
-    .then(loadDeps)
-    .catch((err) => notify(err.message, 'error'));
+  refreshAll().catch((err) => notify(err.message, 'error'));
+});
+el('summary-apply').addEventListener('click', () => {
+  clearNotice();
+  clearFieldMarks();
+  loadSummary().catch((err) => {
+    notify(err.message, 'error');
+    markField(err.field);
+  });
 });
 el('filter-project').addEventListener('change', () => {
   loadDeps().catch((err) => notify(err.message, 'error'));
@@ -376,9 +472,7 @@ el('operator').addEventListener('change', () => {
   window.localStorage.setItem(OPERATOR_KEY, currentOperator());
 });
 
-// 页面打开时先把项目与依赖登记拉一遍，项目决定登记表单里能选哪些归属
+// 页面打开时先把项目、依赖登记与台账总览拉一遍，项目决定登记表单里能选哪些归属
 restoreOperator();
 loadHealth();
-loadProjects()
-  .then(loadDeps)
-  .catch((err) => notify(err.message, 'error'));
+refreshAll().catch((err) => notify(err.message, 'error'));

@@ -23,6 +23,58 @@
   <div class="notice hidden" id="notice"></div>
 
   <main>
+    <section class="panel" id="summary-panel">
+      <div class="panel-head">
+        <h2>台账总览</h2>
+        <div class="filters">
+          <label class="mini" data-field="summaryLimit">清单条数上限
+            <input id="summary-limit" type="number" min="1" max="100" step="1" value="5">
+          </label>
+          <label class="mini" data-field="summaryPendingDays">待升停滞天数
+            <input id="summary-pending-days" type="number" min="0" max="3650" step="1" value="14">
+          </label>
+          <label class="mini" data-field="summaryStaleDays">久未改动天数
+            <input id="summary-stale-days" type="number" min="0" max="3650" step="1" value="30">
+          </label>
+          <button type="button" id="summary-apply">刷新总览</button>
+        </div>
+      </div>
+      <p class="panel-tip" id="summary-meta"></p>
+      <div class="stat-grid">
+        <div class="stat-block">
+          <h3>按项目</h3>
+          <div class="table-wrap">
+            <table class="grid stat-table">
+              <thead>
+                <tr>
+                  <th>项目</th>
+                  <th>条数</th>
+                  <th>占比</th>
+                </tr>
+              </thead>
+              <tbody id="summary-by-project"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="stat-block">
+          <h3>按状态</h3>
+          <div class="table-wrap">
+            <table class="grid stat-table">
+              <thead>
+                <tr>
+                  <th>状态</th>
+                  <th>条数</th>
+                  <th>占比</th>
+                </tr>
+              </thead>
+              <tbody id="summary-by-status"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="watch-grid" id="watch-grid"></div>
+    </section>
+
     <section class="panel">
       <div class="panel-head">
         <h2>项目</h2>
